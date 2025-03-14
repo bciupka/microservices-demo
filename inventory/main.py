@@ -56,6 +56,11 @@ def list_products():
     return [format(i) for i in Product.all_pks()]
 
 
+@app.get("/products/{pk}")
+def get_product(pk: str):
+    return Product.get(pk)
+
+
 @app.post("/products/add")
 def add_product(product_input: ProductInput):
     product = Product(
@@ -64,3 +69,8 @@ def add_product(product_input: ProductInput):
         quantity=product_input.quantity,
     )
     return product.save()
+
+
+@app.delete("/products/{pk}")
+def delete_product(pk: str):
+    return Product.delete(pk)
