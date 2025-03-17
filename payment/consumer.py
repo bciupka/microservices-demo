@@ -1,9 +1,9 @@
 import time
 from redis_om import get_redis_connection
-from main import Product
+from main import Order
 
-key = "order_completed"
-group = "inventory_group"
+key = "order_refund"
+group = "payment_group"
 
 redis_streams = get_redis_connection(decode_responses=True, db=2)
 
@@ -23,23 +23,16 @@ except Exception as e:
 
 while True:
     try:
-        result = redis_streams.xreadgroup(group, "inventory_consumer", {key: ">"})
+        result = redis_streams.xreadgroup(group, "payment_consumer", {key: ">"})
         if result != []:
             for i in result:
                 messages = i[1]
                 stream_id = messages[0][0]
                 obj = messages[0][1]
-                try:
-                    product = Product.get(obj["product_id"])
-                    if product.quantity < int(obj["quantity"]):
-                        raise Exception("Not enough items to proceed")
-                    product.quantity = product.quantity - int(obj["quantity"])
-                    product.save()
-                except Exception:
-                    redis_streams.xadd("order_refund", obj, "*")
-                finally:
-                    redis_streams.xack(key, group, stream_id)
-
+                order = Order.get(obj["pk"])
+                order.status = "refund"
+                order.save()
+                redis_streams.xack(key, group, stream_id)
     except Exception as e:
         print(e)
 
