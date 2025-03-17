@@ -1,3 +1,4 @@
+import time
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.background import BackgroundTasks
@@ -16,6 +17,7 @@ app.add_middleware(
 
 # redis = get_redis_connection(host="", port=6379, password="", decode_responses=True)
 redis = get_redis_connection(decode_responses=True, db=1)  # 0-15 for one container
+redis_streams = get_redis_connection(decode_responses=True, db=2)
 
 
 class OrderCreate(BaseModel):
@@ -39,6 +41,13 @@ class Order(HashModel):
 # Migrator().run()
 
 
+def order_completed(order: Order):
+    time.sleep(7)
+    order.status = "completed"
+    order.save()
+    redis_streams.xadd("order_completed", order.model_dump(), "*")
+
+
 @app.post("/orders", status_code=201)
 async def create_order(body: OrderCreate, background_tasks: BackgroundTasks):
     product = requests.get(f"http://localhost:8000/products/{body.product_id}")
@@ -53,6 +62,7 @@ async def create_order(body: OrderCreate, background_tasks: BackgroundTasks):
     )
 
     order.save()
+    background_tasks.add_task(order_completed, order)
     return order
 
 
