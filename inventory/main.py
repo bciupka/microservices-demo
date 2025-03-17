@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from redis_om import get_redis_connection, HashModel, Migrator
 from pydantic import BaseModel
@@ -61,7 +61,7 @@ def get_product(pk: str):
     return Product.get(pk)
 
 
-@app.post("/products/add")
+@app.post("/products/add", status_code=201)
 def add_product(product_input: ProductInput):
     product = Product(
         name=product_input.name,
@@ -71,6 +71,6 @@ def add_product(product_input: ProductInput):
     return product.save()
 
 
-@app.delete("/products/{pk}")
+@app.delete("/products/{pk}", status_code=204)
 def delete_product(pk: str):
     return Product.delete(pk)
